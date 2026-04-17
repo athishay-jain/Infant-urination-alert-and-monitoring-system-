@@ -3,39 +3,39 @@
 #include <ArduinoJson.h>
 
 // ── WiFi AP Configuration ──────────────────────────────────────────────────
-const char* AP_SSID     = "InfantMonitor";
+const char* AP_SSID = "InfantMonitor";
 const char* AP_PASSWORD = "baby12345";
-IPAddress   AP_IP(192, 168, 4, 1);
-IPAddress   AP_GATEWAY(192, 168, 4, 1);
-IPAddress   AP_SUBNET(255, 255, 255, 0);
+IPAddress AP_IP(192, 168, 4, 1);
+IPAddress AP_GATEWAY(192, 168, 4, 1);
+IPAddress AP_SUBNET(255, 255, 255, 0);
 
 // ── Pin Configuration ──────────────────────────────────────────────────────
-#define MOISTURE_PIN  A0   // Analog moisture sensor
-#define BUZZER_PIN    D5   // Active buzzer
-#define LED_GREEN     D6   // Green LED  → DRY
-#define LED_RED       D7   // Red LED    → WET
+#define MOISTURE_PIN A0  // Analog moisture sensor
+#define BUZZER_PIN D5    // Active buzzer
+#define LED_GREEN D6     // Green LED  → DRY
+#define LED_RED D7       // Red LED    → WET
 
 // ── Threshold Configuration ────────────────────────────────────────────────
 // Moisture sensor: higher analog value = more wet (adjust after testing)
-#define WET_THRESHOLD     600   // Raw ADC value above this = WET  (0–1023)
-#define BUZZER_BEEP_MS    200   // Buzzer beep duration in ms
-#define BUZZER_INTERVAL   3000  // Beep every 3 seconds when wet
+#define WET_THRESHOLD 600     // Raw ADC value above this = WET  (0–1023)
+#define BUZZER_BEEP_MS 200    // Buzzer beep duration in ms
+#define BUZZER_INTERVAL 3000  // Beep every 3 seconds when wet
 
 // ── State Variables ────────────────────────────────────────────────────────
 ESP8266WebServer server(80);
 
-int     rawValue      = 0;
-int     percentage    = 0;
-bool    isWet         = false;
-bool    buzzerOn      = false;
-bool    buzzerEnabled = true;   // Can be toggled by app
-String  lastStatus    = "DRY";
-String  lastChanged   = "Never";
-int     wetEventCount = 0;
-unsigned long lastBuzzerTime  = 0;
-unsigned long wetStartTime    = 0;
-unsigned long lastReadTime    = 0;
-unsigned long sessionStart    = 0;
+int rawValue = 0;
+int percentage = 0;
+bool isWet = false;
+bool buzzerOn = false;
+bool buzzerEnabled = true;  // Can be toggled by app
+String lastStatus = "DRY";
+String lastChanged = "Never";
+int wetEventCount = 0;
+unsigned long lastBuzzerTime = 0;
+unsigned long wetStartTime = 0;
+unsigned long lastReadTime = 0;
+unsigned long sessionStart = 0;
 
 // ── CORS helper ────────────────────────────────────────────────────────────
 void addCORSHeaders() {
@@ -53,18 +53,18 @@ void handleData() {
   unsigned long wetDuration = isWet ? (millis() - wetStartTime) / 1000 : 0;
 
   StaticJsonDocument<300> doc;
-  doc["raw"]          = rawValue;
-  doc["percentage"]   = percentage;
-  doc["status"]       = isWet ? "WET" : "DRY";
-  doc["isWet"]        = isWet;
-  doc["buzzerOn"]     = buzzerOn;
-  doc["buzzerEnabled"]= buzzerEnabled;
-  doc["wetEvents"]    = wetEventCount;
-  doc["lastChanged"]  = lastChanged;
-  doc["wetDuration"]  = (int)wetDuration;   // seconds currently wet
-  doc["uptime"]       = (int)uptimeSec;
-  doc["threshold"]    = WET_THRESHOLD;
-  doc["ip"]           = AP_IP.toString();
+  doc["raw"] = rawValue;
+  doc["percentage"] = percentage;
+  doc["status"] = isWet ? "WET" : "DRY";
+  doc["isWet"] = isWet;
+  doc["buzzerOn"] = buzzerOn;
+  doc["buzzerEnabled"] = buzzerEnabled;
+  doc["wetEvents"] = wetEventCount;
+  doc["lastChanged"] = lastChanged;
+  doc["wetDuration"] = (int)wetDuration;  // seconds currently wet
+  doc["uptime"] = (int)uptimeSec;
+  doc["threshold"] = WET_THRESHOLD;
+  doc["ip"] = AP_IP.toString();
 
   String response;
   serializeJson(doc, response);
@@ -83,14 +83,14 @@ void handleBuzzer() {
     }
   }
   server.send(200, "application/json",
-    "{\"buzzerEnabled\":" + String(buzzerEnabled ? "true" : "false") + "}");
+              "{\"buzzerEnabled\":" + String(buzzerEnabled ? "true" : "false") + "}");
 }
 
 // ── /reset endpoint ────────────────────────────────────────────────────────
 void handleReset() {
   addCORSHeaders();
   wetEventCount = 0;
-  lastChanged   = "Never";
+  lastChanged = "Never";
   server.send(200, "application/json", "{\"reset\":true}");
 }
 
@@ -111,16 +111,16 @@ void setup() {
   Serial.begin(115200);
 
   pinMode(BUZZER_PIN, OUTPUT);
-  pinMode(LED_GREEN,  OUTPUT);
-  pinMode(LED_RED,    OUTPUT);
+  pinMode(LED_GREEN, OUTPUT);
+  pinMode(LED_RED, OUTPUT);
 
   // Boot blink — 3 flashes to confirm startup
   for (int i = 0; i < 3; i++) {
     digitalWrite(LED_GREEN, HIGH);
-    digitalWrite(LED_RED,   HIGH);
+    digitalWrite(LED_RED, HIGH);
     delay(150);
     digitalWrite(LED_GREEN, LOW);
-    digitalWrite(LED_RED,   LOW);
+    digitalWrite(LED_RED, LOW);
     delay(150);
   }
 
@@ -134,10 +134,10 @@ void setup() {
   Serial.println(WiFi.softAPIP());
 
   // Register HTTP routes
-  server.on("/",        handleRoot);
-  server.on("/data",    handleData);
-  server.on("/buzzer",  handleBuzzer);
-  server.on("/reset",   handleReset);
+  server.on("/", handleRoot);
+  server.on("/data", handleData);
+  server.on("/buzzer", handleBuzzer);
+  server.on("/reset", handleReset);
   server.onNotFound([]() {
     addCORSHeaders();
     server.send(404, "application/json", "{\"error\":\"Not found\"}");
@@ -159,20 +159,20 @@ void loop() {
   if (millis() - lastReadTime >= 500) {
     lastReadTime = millis();
 
-    rawValue   = analogRead(MOISTURE_PIN);
-    percentage = map(rawValue, 0, 1023, 0, 100);
-    bool nowWet = (rawValue > WET_THRESHOLD);
+    rawValue = analogRead(MOISTURE_PIN);
+    percentage = map(rawValue, 1023, 300, 0, 100);
+    bool nowWet = (rawValue < WET_THRESHOLD);
 
     // Detect state transition
     if (nowWet != isWet) {
-      isWet      = nowWet;
+      isWet = nowWet;
       lastStatus = isWet ? "WET" : "DRY";
 
       // Timestamp (uptime seconds as proxy since no RTC)
       unsigned long sec = millis() / 1000;
       lastChanged = String(sec / 3600) + "h "
-                  + String((sec % 3600) / 60) + "m "
-                  + String(sec % 60) + "s";
+                    + String((sec % 3600) / 60) + "m "
+                    + String(sec % 60) + "s";
 
       if (isWet) {
         wetEventCount++;
@@ -183,8 +183,8 @@ void loop() {
       }
 
       // Update LEDs immediately on state change
-      digitalWrite(LED_GREEN, isWet ? LOW  : HIGH);
-      digitalWrite(LED_RED,   isWet ? HIGH : LOW);
+      digitalWrite(LED_GREEN, isWet ? LOW : HIGH);
+      digitalWrite(LED_RED, isWet ? HIGH : LOW);
     }
 
     // Buzzer beeping logic — beep every BUZZER_INTERVAL ms while wet
